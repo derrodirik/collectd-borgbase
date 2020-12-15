@@ -6,8 +6,20 @@ class BorgBaseService:
 
     def __init__(self):
         self.endpoint = "https://api.borgbase.com/graphql"
+        self.api_key = None
 
         self.debug = False
+
+    def dispatch(self, repo, value, data_type="bytes"):
+        cld_dispatch = collectd.Values(
+            plugin='borgbase',
+            type=data_type,
+            type_instance=repo
+        )
+        cld_dispatch.dispatch(values=[value])
+
+        if self.debug:
+            collectd.info('borgbase: Repo: ' + repo + ' Usage: ' + str(value))
 
     def config(self, config):
         api_key_set = False
@@ -50,27 +62,14 @@ class BorgBaseService:
             # Convert MB into bytes
             usage = int(repo['currentUsage'] * 1000000)
 
+            # Calculate total Usage
             total_usage = total_usage + usage
 
-            Value = collectd.Values(
-                plugin='borgbase',
-                type='bytes',
-                type_instance=repo['name']
-            )
-            Value.dispatch(values=[usage])
+            # Dispatch Usage of the Repo
+            self.dispatch(repo=repo['name'], value=usage)
 
-            if self.debug:
-                collectd.info('borgbase: Repo: ' + repo['name'] + ' Usage: ' + str(usage))
-
-        Value = collectd.Values(
-            plugin='borgbase',
-            type='bytes',
-            type_instance='total'
-        )
-        Value.dispatch(values=[total_usage])
-
-        if self.debug:
-            collectd.info('borgbase: Total Usage: ' + str(total_usage))
+        # Dispatch Total Usage of all Repos
+        self.dispatch(repo="total", value=total_usage)
 
 
 bbs = BorgBaseService()
