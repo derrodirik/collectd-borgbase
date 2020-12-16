@@ -46,8 +46,6 @@ class BorgBaseService:
         query = "query{repoList{id,name,currentUsage}}"
         header = {"Authorization": "Bearer " + self.api_key}
 
-        total_usage = 0
-
         if self.debug:
             collectd.info('borgbase: Getting data from API')
 
@@ -58,12 +56,14 @@ class BorgBaseService:
         # Get JSON Object from request
         r = response.json()
 
+        total_usage = 0
+
         for repo in r['data']['repoList']:
             # Convert MB into bytes
             usage = int(repo['currentUsage'] * 1000000)
 
             # Calculate total Usage
-            total_usage = total_usage + usage
+            total_usage += usage
 
             # Dispatch Usage of the Repo
             self.dispatch(repo=repo['name'], value=usage)
