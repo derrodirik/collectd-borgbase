@@ -8,7 +8,6 @@ class BorgBaseService:
         self.endpoint = "https://api.borgbase.com/graphql"
         self.api_key = None
 
-        self.debug = False
 
     def dispatch(self, repo, value, data_type="bytes"):
         cld_dispatch = collectd.Values(
@@ -18,8 +17,7 @@ class BorgBaseService:
         )
         cld_dispatch.dispatch(values=[value])
 
-        if self.debug:
-            collectd.info('borgbase: Repo: ' + repo + ' Usage: ' + str(value))
+        collectd.debug('borgbase: Repo: ' + repo + ' Usage: ' + str(value))
 
     def config(self, config):
         api_key_set = False
@@ -31,23 +29,19 @@ class BorgBaseService:
             if key == 'apikey':
                 self.api_key = val
                 api_key_set = True
-            elif key == 'debug':
-                if val == "True":
-                    self.debug = True
             else:
                 collectd.info('borgbase: Unknown config key "%s"' % key)
 
         if not api_key_set:
             collectd.error('borgbase: API Key not set. Exiting')
-            exit(1)
+            raise ValueError
 
     def read(self):
 
         query = "query{repoList{id,name,currentUsage}}"
         header = {"Authorization": "Bearer " + self.api_key}
 
-        if self.debug:
-            collectd.info('borgbase: Getting data from API')
+        collectd.debug('borgbase: Getting data from API')
 
         response = requests.post(self.endpoint,
                                  json={'query': query},
