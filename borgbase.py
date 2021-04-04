@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import requests
 import collectd
 
@@ -8,6 +9,8 @@ class BorgBaseService:
         self.endpoint = "https://api.borgbase.com/graphql"
         self.api_key = None
 
+        self.next_request_time = None
+        self.cached_response = None
 
     def dispatch(self, repo, value, data_type="bytes"):
         cld_dispatch = collectd.Values(
@@ -43,12 +46,18 @@ class BorgBaseService:
 
         collectd.debug('borgbase: Getting data from API')
 
-        response = requests.post(self.endpoint,
-                                 json={'query': query},
-                                 headers=header)
+        if self.cached_response is None or self.next_request_time < datetime.now():
+            self.cached_response = requests.post(self.endpoint,
+                                                 json={'query': query},
+                                                 headers=header)
+            self.next_request_time = datetime.now() + timedelta(minutes=15)
+            collectd.debug('borgbase: Data requested. Next Request at: ' + self.next_request_time.strftime('%c'))
+
+        else:
+            collectd.debug('borgbase: Got Data from Cache.')
 
         # Get JSON Object from request
-        r = response.json()
+        r = self.cached_response.json()
 
         total_usage = 0
 
